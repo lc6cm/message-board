@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DIDLab Message Board</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 0 18px;
+      color: #222;
+      background: #f5f7fb;
+    }
+
+    main {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px #00000012;
+    }
+
+    h1 { margin-top: 0; }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      min-height: 100px;
+      margin: 8px 0 12px;
+      font: inherit;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 4px 4px 4px 0;
+    }
+
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .primary { background: #2457d6; color: white; }
+    .panel {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid #e1e5ee;
+      border-radius: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .muted { color: #5d6678; font-size: 14px; }
+    #status { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #activity { padding-left: 20px; }
+    #activity li { margin: 8px 0; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DIDLab Message Board</h1>
+    <p>Read the latest on-chain message or connect your wallet to post one.</p>
+
+    <button id="connectButton" class="primary">Connect Wallet</button>
+    <p id="wallet" class="muted">Wallet not connected</p>
+    <p id="network" class="muted">Checking network...</p>
+
+    <section class="panel">
+      <h2>Latest message</h2>
+      <p id="latestMessage">Loading message...</p>
+      <p class="muted">Last poster: <span id="lastPoster">—</span></p>
+      <p class="muted">Total messages: <span id="messageCount">—</span></p>
+      <button id="refreshButton">Refresh from chain</button>
+    </section>
+
+    <section class="panel">
+      <h2>Post a message</h2>
+      <label for="messageInput">Message (1–280 bytes)</label>
+      <textarea id="messageInput" maxlength="280"
+        placeholder="Write your message..."></textarea>
+      <p id="characterCount" class="muted">0 characters</p>
+      <button id="simulateButton">Simulate write</button>
+      <button id="postButton" class="primary">Post message</button>
+      <p id="status" role="status">Ready.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Recent activity</h2>
+      <ul id="activity"><li class="muted">No events loaded yet.</li></ul>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
