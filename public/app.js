@@ -55,6 +55,7 @@ function isUserRejection(error) {
 
 function addActivity(message) {
   const placeholder = activityList.querySelector(".muted");
+
   if (placeholder) {
     activityList.innerHTML = "";
   }
@@ -70,6 +71,7 @@ function addActivity(message) {
 
 function getEventKey(event) {
   const log = event.log || event;
+
   return (
     (log.transactionHash || event.transactionHash || "") +
     ":" +
@@ -80,9 +82,15 @@ function getEventKey(event) {
 async function refreshNetworkLabel() {
   try {
     const network = await readProvider.getNetwork();
+
+    const networkName =
+      network.chainId === EXPECTED_CHAIN_ID
+        ? "DIDLab"
+        : network.name;
+
     networkLabel.textContent =
       "Read network: " +
-      network.name +
+      networkName +
       " (Chain ID: " +
       network.chainId.toString() +
       ")";
@@ -101,7 +109,9 @@ async function refreshState() {
     ]);
 
     latestMessageLabel.textContent =
-      message && message.length > 0 ? message : "No messages posted yet.";
+      message && message.length > 0
+        ? message
+        : "No messages posted yet.";
 
     lastPosterLabel.textContent =
       poster === ethers.ZeroAddress ? "—" : poster;
@@ -212,6 +222,7 @@ async function connectWallet() {
     walletLabel.textContent = "Connected wallet: " + address;
 
     const network = await walletProvider.getNetwork();
+
     if (network.chainId !== EXPECTED_CHAIN_ID) {
       throw new Error("Connected wallet is not on DIDLab.");
     }
@@ -294,12 +305,8 @@ async function postMessage() {
 
     addActivity("Transaction confirmed: " + tx.hash);
 
-    // FIX: Explicitly refresh state after the transaction is confirmed.
-    setStatus("Transaction confirmed. Refreshing message board...");
-    await refreshState();
-    await loadRecentEvents();
-
-    setStatus("Transaction confirmed in block " + receipt.blockNumber);
+    // Refresh state only when the contract event is received.
+    setStatus("Transaction confirmed. Waiting for on-chain event...");
   } catch (error) {
     if (isUserRejection(error)) {
       setStatus("Transaction rejected in wallet. No transaction was sent.");
@@ -349,6 +356,7 @@ async function loadRecentEvents() {
 
 function startEventListener() {
   if (eventListenerStarted) return;
+
   eventListenerStarted = true;
 
   const filter = readContract.filters.MessagePosted();
@@ -372,8 +380,10 @@ function startEventListener() {
         );
       }
 
-      // Keep the display updated when an event is received.
+      // The displayed contract state is refreshed from the event listener.
       await refreshState();
+
+      setStatus("Message board updated from an on-chain event.");
     }
   );
 }
@@ -382,6 +392,7 @@ connectButton.addEventListener("click", connectWallet);
 
 refreshButton.addEventListener("click", async () => {
   setStatus("Refreshing from DIDLab...");
+
   const refreshed = await refreshState();
   await loadRecentEvents();
 
