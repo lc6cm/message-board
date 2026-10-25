@@ -1,4 +1,4 @@
-
+﻿
 import { ethers } from "./ethers.min.js";
 
 const EXPECTED_CHAIN_ID = 252501n;
@@ -20,6 +20,16 @@ const characterCount = document.getElementById("characterCount");
 const statusLabel = document.getElementById("status");
 const activityList = document.getElementById("activity");
 
+const roleLabel = document.getElementById("role");
+const roleMessage = document.getElementById("roleMessage");
+const anchorPanel = document.getElementById("anchor-panel");
+const verifyPanel = document.getElementById("verify-panel");
+const refreshRecordsButton = document.getElementById("refreshRecordsButton");
+const registryRecordsLabel = document.getElementById("registryRecords");
+
+let registryArtifact;
+let registryReadContract;
+let registryWriteContract;
 let artifact;
 let readProvider;
 let readContract;
@@ -83,14 +93,9 @@ async function refreshNetworkLabel() {
   try {
     const network = await readProvider.getNetwork();
 
-    const networkName =
-      network.chainId === EXPECTED_CHAIN_ID
-        ? "DIDLab"
-        : network.name;
-
     networkLabel.textContent =
       "Read network: " +
-      networkName +
+      network.name +
       " (Chain ID: " +
       network.chainId.toString() +
       ")";
@@ -109,12 +114,10 @@ async function refreshState() {
     ]);
 
     latestMessageLabel.textContent =
-      message && message.length > 0
-        ? message
-        : "No messages posted yet.";
+      message && message.length > 0 ? message : "No messages posted yet.";
 
     lastPosterLabel.textContent =
-      poster === ethers.ZeroAddress ? "—" : poster;
+      poster === ethers.ZeroAddress ? "â€”" : poster;
 
     messageCountLabel.textContent = count.toString();
 
@@ -146,10 +149,164 @@ async function loadContract() {
     readProvider
   );
 
+  // Initialize the Anchor Registry separately.
+  try {
+    const registryResponse = await fetch("./anchor-registry.json");
+
+    if (!registryResponse.ok) {
+      throw new Error("Could not load anchor-registry.json.");
+    }
+
+    registryArtifact = await registryResponse.json();
+
+    if (Number(registryArtifact.chainId) !== Number(EXPECTED_CHAIN_ID)) {
+      throw new Error("anchor-registry.json has an unexpected chain ID.");
+    }
+
+    registryReadContract = new ethers.Contract(
+      registryArtifact.address,
+      registryArtifact.abi,
+      readProvider
+    );
+  } catch (error) {
+    console.error("Anchor Registry initialization failed:", error);
+
+    if (roleLabel) roleLabel.textContent = "Registry unavailable";
+    if (roleMessage) roleMessage.textContent = formatError(error);
+  }
+
+  // Original Message Board initialization.
   await refreshNetworkLabel();
   await refreshState();
   await loadRecentEvents();
   startEventListener();
+
+  if (registryReadContract) {
+    await loadRegistryRecords();
+  }
+}
+
+async function refreshRegistryRole() {
+  if (!signer || !registryReadContract) return;
+
+  try {
+    const address = await signer.getAddress();
+
+    const [admin, submitter, verifier] = await Promise.all([
+      registryReadContract.hasRole(ethers.id("ADMIN"), address),
+      registryReadContract.hasRole(ethers.id("SUBMITTER"), address),
+      registryReadContract.hasRole(ethers.id("VERIFIER"), address)
+    ]);
+
+    const roles = [];
+
+    if (admin) roles.push("Admin");
+    if (submitter) roles.push("Submitter");
+    if (verifier) roles.push("Verifier");
+
+    if (roleLabel) {
+      roleLabel.textContent = roles.length
+        ? roles.join(", ")
+        : "No registry role";
+    }
+
+    if (roleMessage) {
+      roleMessage.textContent = roles.length
+        ? "Registry permissions loaded for " + address
+        : "This wallet has no registry permissions.";
+    }
+
+    if (anchorPanel) {
+      anchorPanel.style.display = submitter ? "" : "none";
+    }
+
+    if (verifyPanel) {
+      verifyPanel.style.display = verifier ? "" : "none";
+    }
+  } catch (error) {
+    if (roleLabel) roleLabel.textContent = "Could not load role";
+    if (roleMessage) roleMessage.textContent = formatError(error);
+  }
+}
+
+async function loadRegistryRecords() {
+  if (!registryReadContract || !registryRecordsLabel) return;
+
+  registryRecordsLabel.textContent = "Loading registry records...";
+
+  try {
+    const latestBlock = await readProvider.getBlockNumber();
+    const fromBlock = 6665000;
+    const chunkSize = 500;
+    const recordIds = new Set();
+
+    for (
+      let start = fromBlock;
+      start <= latestBlock;
+      start += chunkSize
+    ) {
+      const end = Math.min(start + chunkSize - 1, latestBlock);
+
+      const events = await registryReadContract.queryFilter(
+        registryReadContract.filters.RecordAnchored(),
+        start,
+        end
+      );
+
+      for (const event of events) {
+        recordIds.add(event.args.recordId);
+      }
+    }
+
+    if (recordIds.size === 0) {
+      registryRecordsLabel.textContent =
+        "No anchored records found in the scanned block range.";
+      return;
+    }
+
+    const records = await Promise.all(
+      [...recordIds].map(async (recordId) => ({
+        recordId,
+        record: await registryReadContract.get(recordId)
+      }))
+    );
+
+    registryRecordsLabel.replaceChildren();
+
+    for (const { recordId, record } of records.reverse()) {
+      const item = document.createElement("div");
+      item.style.marginBottom = "1rem";
+
+      const heading = document.createElement("strong");
+      heading.textContent = "Record: " + recordId;
+      item.appendChild(heading);
+
+      const details = document.createElement("pre");
+      details.style.whiteSpace = "pre-wrap";
+      details.textContent =
+        "Digest: " + record.digest +
+        "\nCID: " + record.cid +
+        "\nSubmitter: " + record.submitter +
+        "\nSubmitted: " +
+        (Number(record.submittedAt) === 0
+          ? "â€”"
+          : new Date(Number(record.submittedAt) * 1000).toLocaleString()) +
+        "\nVerifier: " +
+        (record.verifier === ethers.ZeroAddress
+          ? "Not verified"
+          : record.verifier) +
+        "\nVerified: " +
+        (Number(record.verifiedAt) === 0
+          ? "No"
+          : new Date(Number(record.verifiedAt) * 1000).toLocaleString());
+
+      item.appendChild(details);
+      registryRecordsLabel.appendChild(item);
+    }
+  } catch (error) {
+    registryRecordsLabel.textContent =
+      "Could not load registry records: " + formatError(error);
+  }
 }
 
 async function ensureCorrectNetwork() {
@@ -207,7 +364,6 @@ async function connectWallet() {
     await ensureCorrectNetwork();
 
     walletProvider = new ethers.BrowserProvider(window.ethereum);
-
     await walletProvider.send("eth_requestAccounts", []);
 
     signer = await walletProvider.getSigner();
@@ -227,7 +383,19 @@ async function connectWallet() {
       throw new Error("Connected wallet is not on DIDLab.");
     }
 
+    // Set up the registry write contract for future registry transactions.
+    registryWriteContract = registryArtifact
+      ? new ethers.Contract(
+          registryArtifact.address,
+          registryArtifact.abi,
+          signer
+        )
+      : null;
+
     setStatus("Wallet connected to DIDLab.");
+
+    await refreshRegistryRole();
+    await loadRegistryRecords();
   } catch (error) {
     setStatus("Wallet connection failed: " + formatError(error));
   }
@@ -305,8 +473,11 @@ async function postMessage() {
 
     addActivity("Transaction confirmed: " + tx.hash);
 
-    // Refresh state only when the contract event is received.
-    setStatus("Transaction confirmed. Waiting for on-chain event...");
+    setStatus("Transaction confirmed. Refreshing message board...");
+    await refreshState();
+    await loadRecentEvents();
+
+    setStatus("Transaction confirmed in block " + receipt.blockNumber);
   } catch (error) {
     if (isUserRejection(error)) {
       setStatus("Transaction rejected in wallet. No transaction was sent.");
@@ -356,7 +527,6 @@ async function loadRecentEvents() {
 
 function startEventListener() {
   if (eventListenerStarted) return;
-
   eventListenerStarted = true;
 
   const filter = readContract.filters.MessagePosted();
@@ -380,15 +550,35 @@ function startEventListener() {
         );
       }
 
-      // The displayed contract state is refreshed from the event listener.
       await refreshState();
-
-      setStatus("Message board updated from an on-chain event.");
     }
   );
 }
 
+function resetRegistryWalletState() {
+  registryWriteContract = null;
+
+  if (roleLabel) {
+    roleLabel.textContent = "Reconnect wallet to check role";
+  }
+
+  if (roleMessage) {
+    roleMessage.textContent =
+      "Connect your wallet to see your registry permissions.";
+  }
+
+  if (anchorPanel) anchorPanel.style.display = "none";
+  if (verifyPanel) verifyPanel.style.display = "none";
+}
+
 connectButton.addEventListener("click", connectWallet);
+
+if (refreshRecordsButton) {
+  refreshRecordsButton.addEventListener("click", async () => {
+    await loadRegistryRecords();
+    await refreshRegistryRole();
+  });
+}
 
 refreshButton.addEventListener("click", async () => {
   setStatus("Refreshing from DIDLab...");
@@ -417,6 +607,8 @@ if (window.ethereum) {
 
     walletLabel.textContent = "Account changed. Reconnect your wallet.";
     setStatus("Wallet account changed. Click Connect Wallet again.");
+
+    resetRegistryWalletState();
   });
 
   window.ethereum.on("chainChanged", () => {
@@ -426,6 +618,8 @@ if (window.ethereum) {
 
     walletLabel.textContent = "Network changed. Reconnect your wallet.";
     setStatus("Network changed. Click Connect Wallet to verify DIDLab.");
+
+    resetRegistryWalletState();
   });
 }
 

@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DIDLab Message Board</title>
+  <title>DIDLab Message Board and Anchor Registry</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,12 +24,21 @@
     }
 
     h1 { margin-top: 0; }
+
     textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 12px;
       min-height: 100px;
       margin: 8px 0 12px;
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      margin: 6px 0 12px;
       font: inherit;
     }
 
@@ -40,8 +50,16 @@
       margin: 4px 4px 4px 0;
     }
 
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .primary { background: #2457d6; color: white; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .primary {
+      background: #2457d6;
+      color: white;
+    }
+
     .panel {
       margin-top: 18px;
       padding: 14px;
@@ -50,43 +68,143 @@
       overflow-wrap: anywhere;
     }
 
-    .muted { color: #5d6678; font-size: 14px; }
-    #status { white-space: pre-wrap; overflow-wrap: anywhere; }
-    #activity { padding-left: 20px; }
-    #activity li { margin: 8px 0; overflow-wrap: anywhere; }
+    .muted {
+      color: #5d6678;
+      font-size: 14px;
+    }
+
+    #status {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    #activity {
+      padding-left: 20px;
+    }
+
+    #activity li {
+      margin: 8px 0;
+      overflow-wrap: anywhere;
+    }
+
+    #registryRecords article {
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid #e1e5ee;
+      border-radius: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    #registryRecords p {
+      margin: 8px 0;
+    }
+
+    a {
+      overflow-wrap: anywhere;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
   </style>
 </head>
+
 <body>
   <main>
     <h1>DIDLab Message Board</h1>
-    <p>Read the latest on-chain message or connect your wallet to post one.</p>
+    <p>
+      Read the latest on-chain message or connect your wallet to post one.
+    </p>
 
     <button id="connectButton" class="primary">Connect Wallet</button>
     <p id="wallet" class="muted">Wallet not connected</p>
     <p id="network" class="muted">Checking network...</p>
 
+    <!-- Existing Message Board -->
     <section class="panel">
       <h2>Latest message</h2>
       <p id="latestMessage">Loading message...</p>
-      <p class="muted">Last poster: <span id="lastPoster">—</span></p>
-      <p class="muted">Total messages: <span id="messageCount">—</span></p>
+      <p class="muted">
+        Last poster: <span id="lastPoster">—</span>
+      </p>
+      <p class="muted">
+        Total messages: <span id="messageCount">—</span>
+      </p>
       <button id="refreshButton">Refresh from chain</button>
     </section>
 
     <section class="panel">
       <h2>Post a message</h2>
+
       <label for="messageInput">Message (1–280 bytes)</label>
-      <textarea id="messageInput" maxlength="280"
-        placeholder="Write your message..."></textarea>
+      <textarea
+        id="messageInput"
+        maxlength="280"
+        placeholder="Write your message..."
+      ></textarea>
+
       <p id="characterCount" class="muted">0 characters</p>
+
       <button id="simulateButton">Simulate write</button>
       <button id="postButton" class="primary">Post message</button>
+
       <p id="status" role="status">Ready.</p>
     </section>
 
+    <!-- Anchor Registry -->
+    <section class="panel">
+      <h2>Anchor Registry</h2>
+
+      <p>
+        Your role:
+        <strong id="role">Connect wallet to check role</strong>
+      </p>
+
+      <p id="roleMessage" class="muted">
+        Connect your wallet to see your registry permissions.
+      </p>
+
+      <!-- Visible only to accounts with the SUBMITTER role -->
+      <section id="anchor-panel" hidden>
+        <h3>Submit an artifact</h3>
+        <p>
+          You have permission to submit records to the Anchor Registry.
+        </p>
+        <p class="muted">
+          Artifact submission controls will be connected to the registry
+          contract in the next step.
+        </p>
+      </section>
+
+      <!-- Visible only to accounts with the VERIFIER role -->
+      <section id="verify-panel" hidden>
+        <h3>Verify a record</h3>
+        <p>
+          You have permission to verify records submitted by other accounts.
+        </p>
+        <p class="muted">
+          Record verification controls will be connected to the registry
+          contract in the next step.
+        </p>
+      </section>
+
+      <h3>Registry records</h3>
+      <button id="refreshRecordsButton">Refresh records</button>
+
+      <div id="registryRecords">
+        <p class="muted">
+          Registry records will appear here after the on-chain loading
+          function is connected.
+        </p>
+      </div>
+    </section>
+
+    <!-- Existing Message Board activity -->
     <section class="panel">
       <h2>Recent activity</h2>
-      <ul id="activity"><li class="muted">No events loaded yet.</li></ul>
+      <ul id="activity">
+        <li class="muted">No events loaded yet.</li>
+      </ul>
     </section>
   </main>
 
