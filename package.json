@@ -16,6 +16,8 @@
     "solc": "^0.8.37"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "hardhat": "^2.28.0",
     "serve": "^14.2.6"
   }
 }
