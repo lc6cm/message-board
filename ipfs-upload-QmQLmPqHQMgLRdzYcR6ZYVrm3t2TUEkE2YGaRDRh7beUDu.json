@@ -1,0 +1,17 @@
+{
+  "bundleVersion": 2,
+  "cid": "QmQLmPqHQMgLRdzYcR6ZYVrm3t2TUEkE2YGaRDRh7beUDu",
+  "name": "didlab-62754339-e03e-408a-b6af-dcde1d5f5c01.bin",
+  "size": "825",
+  "ipfsUri": "ipfs://QmQLmPqHQMgLRdzYcR6ZYVrm3t2TUEkE2YGaRDRh7beUDu",
+  "gatewayUrl": "https://gateway.didlab.org/ipfs/QmQLmPqHQMgLRdzYcR6ZYVrm3t2TUEkE2YGaRDRh7beUDu",
+  "address": "0x07a04d2Eb63fE3B61FCE842D6DA6fC260B906e0a",
+  "timestamp": 1792964706,
+  "iv": "YVIsmNWy7UhTbrRW",
+  "originalName": "MessageBoard.sol",
+  "mimeType": "application/octet-stream",
+  "encryption": "AES-256-GCM",
+  "ciphertextSha256": "b7d4482482c9e6994b872cfe1dfe7008683558159d3f944939b75b9fb4039400",
+  "publishAuthorizedAt": 1792964742,
+  "payment": null
+}
